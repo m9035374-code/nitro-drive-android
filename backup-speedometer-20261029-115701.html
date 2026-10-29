@@ -1,0 +1,625 @@
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#111820">
+<title>NITRO DRIVE | سباق السرعة</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#111820;color:#fff;font-family:Arial,sans-serif;text-align:center;overflow:hidden;touch-action:manipulation;user-select:none}
+header{height:55px;display:flex;align-items:center;justify-content:space-between;padding:0 15px;background:#18232e}
+.logo{font-weight:900;letter-spacing:1px;font-size:17px}
+.logo span{color:#48e0a0}
+.pill{background:#263442;padding:7px 12px;border-radius:20px;font-size:13px}
+#stats{display:flex;justify-content:space-around;padding:10px 4px}
+.stat{min-width:85px;background:#1b2733;border:1px solid #344452;border-radius:12px;padding:7px}
+.stat small{display:block;color:#9fb0be;font-size:11px;margin-bottom:4px}
+.stat strong{font-size:19px}
+#game{display:block;width:min(100vw,390px);height:auto;max-height:66dvh;margin:0 auto;background:#555;touch-action:none}
+.controls{display:flex;justify-content:center;align-items:center;gap:20px;padding:12px 10px}
+.ctrl{width:100px;height:53px;border:1px solid #526777;border-radius:14px;background:#263442;color:white;font-size:22px;font-weight:bold}
+.ctrl:active{background:#48e0a0;color:#102018}
+#pause{width:65px;font-size:16px}
+.note{color:#8d9eac;font-size:11px;margin:0}
+#overlay{position:fixed;inset:0;z-index:5;background:#071019eF;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:13px}
+#overlay h1{font-size:34px;margin:0;color:#48e0a0}
+#overlay p{color:#c4d0d9;line-height:1.7;max-width:290px}
+#start{border:0;background:#48e0a0;color:#102018;border-radius:13px;padding:15px 35px;font-size:18px;font-weight:bold}
+#overlay .sub{font-size:12px;color:#8394a2}
+.nitro{display:block;margin:0;width:90px;height:53px;flex-shrink:0;border:1px solid #48e0a0;border-radius:12px;background:#173b35;color:#48e0a0;font-size:16px;font-weight:bold}.nitro:active{background:#48e0a0;color:#102018}
+@media(min-height:750px){#game{max-height:68dvh}}
+
+#carPreviewWrap{
+  width:min(250px,85%); margin:14px auto 12px;
+  padding:12px; border:1px solid #ffffff25;
+  border-radius:18px;
+  background:linear-gradient(145deg,#18232cdd,#080d13ee);
+  box-shadow:0 8px 25px #0005;
+}
+#carPreviewTitle{font-size:12px;color:#aab9c8;margin-bottom:7px}
+#carPreview{display:block;width:100%;height:105px}
+#carPreviewCaption{font-size:12px;color:#dbe6ef;margin-top:4px}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">NITRO <span>DRIVE</span></div>
+  <div class="pill">🏁 ARCADE RACING</div>
+</header>
+<div id="stats">
+  <div class="stat"><small>النقاط</small><strong id="score">0</strong></div>
+  <div class="stat"><small>السرعة</small><strong><span id="speed">80</span></strong><small>كم/س</small></div>
+  <div class="stat"><small>أفضل نتيجة</small><strong id="best">0</strong></div>
+</div>
+<canvas id="game" width="390" height="600"></canvas>
+<div class="controls">
+  <button class="ctrl" id="left" aria-label="يسار">◀</button>
+  <button class="ctrl" id="pause">Ⅱ</button>
+  <button class="ctrl" id="right" aria-label="يمين">▶</button>
+<button class="nitro" id="nitro">⚡ نيترو</button>
+</div>
+<p class="note">استخدم الأسهم أو أزرار التحكم لتفادي السيارات</p>
+
+<div id="overlay">
+  <div style="font-size:52px">🏎️</div>
+  <h1 id="headline">NITRO DRIVE</h1>
+  
+<div id="menuBest" style="
+  margin:12px auto;padding:12px 20px;
+  max-width:250px;border:1px solid #48e0a066;
+  border-radius:14px;background:linear-gradient(135deg,#142c2a,#101820);
+  color:#8fffd0;font-weight:700;font-size:15px;
+  box-shadow:0 0 18px #17b87922">
+  🏆 أفضل نتيجة شخصية: 0
+</div>
+
+<p id="message">استعد للسباق! تفادى السيارات واجمع النقاط وحقق أفضل نتيجة.</p>
+  <div id="carPicker" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+    <button class="carChoice selected" data-color="#17b879" style="border:2px solid #48e0a0;background:#203b38;color:white;border-radius:12px;padding:10px">🟢 خضراء</button>
+    <button class="carChoice" data-color="#e34b48" style="border:2px solid #526777;background:#263442;color:white;border-radius:12px;padding:10px">🔴 حمراء</button>
+    <button class="carChoice" data-color="#367dc5" style="border:2px solid #526777;background:#263442;color:white;border-radius:12px;padding:10px">🔵 زرقاء</button>
+  </div>
+  
+<div id="carPreviewWrap">
+  <div id="carPreviewTitle">معاينة سيارتك</div>
+  <canvas id="carPreview" width="240" height="105"></canvas>
+  <div id="carPreviewCaption">اختار لونك وانطلق!</div>
+</div>
+<button id="start">ابدأ السباق</button>
+  <div class="sub">لعبة سباق للموبايل والكمبيوتر</div>
+</div>
+
+<script>
+const c=document.getElementById('game');
+const ctx=c.getContext('2d');
+const $=id=>document.getElementById(id);
+const W=390,H=600;
+const lanes=[100,195,290];
+let player,enemies,score,speed,roadOffset,lastSpawn,lastTime,running,paused;
+let best=0;
+let playerColor='#17b879';
+
+(function(){
+  const preview = document.getElementById('carPreview');
+  if (!preview) return;
+  const pc = preview.getContext('2d');
+
+  function paintPreview(){
+    const color = typeof playerColor !== 'undefined'
+      ? playerColor : '#17b879';
+    pc.clearRect(0,0,240,105);
+
+    const glow = pc.createRadialGradient(120,54,5,120,54,65);
+    glow.addColorStop(0,color+'55');
+    glow.addColorStop(1,'#00000000');
+    pc.fillStyle=glow;
+    pc.fillRect(0,0,240,105);
+
+    pc.fillStyle='#05090e';
+    pc.beginPath();
+    pc.ellipse(120,55,33,43,0,0,Math.PI*2);
+    pc.fill();
+
+    // عجلات
+    pc.fillStyle='#080a0e';
+    [[91,31],[143,31],[91,66],[143,66]].forEach(([x,y])=>{
+      pc.fillRect(x,y,7,19);
+    });
+
+    // جسم السيارة
+    pc.fillStyle=color;
+    pc.beginPath();
+    pc.moveTo(105,15); pc.quadraticCurveTo(120,7,135,15);
+    pc.lineTo(145,34); pc.lineTo(141,76);
+    pc.quadraticCurveTo(120,91,99,76);
+    pc.lineTo(95,34); pc.closePath(); pc.fill();
+
+    // الزجاج
+    pc.fillStyle='#152b3d';
+    pc.beginPath();
+    pc.moveTo(108,24); pc.lineTo(132,24);
+    pc.lineTo(137,39); pc.lineTo(103,39);
+    pc.closePath(); pc.fill();
+
+    pc.fillStyle='#243c50';
+    pc.beginPath();
+    pc.moveTo(103,48); pc.lineTo(137,48);
+    pc.lineTo(134,64); pc.lineTo(106,64);
+    pc.closePath(); pc.fill();
+
+    // انعكاس على جسم السيارة
+    pc.strokeStyle='#ffffffa8'; pc.lineWidth=2;
+    pc.beginPath(); pc.moveTo(108,44); pc.lineTo(107,58);
+    pc.stroke();
+
+    // المصابيح الأمامية
+    pc.fillStyle='#eaf8ff';
+    pc.fillRect(102,13,9,4); pc.fillRect(129,13,9,4);
+
+    // مصابيح خلفية
+    pc.fillStyle='#ff3e48';
+    pc.fillRect(102,76,9,4); pc.fillRect(129,76,9,4);
+  }
+
+  paintPreview();
+
+  document.querySelectorAll('[data-car-color]').forEach(btn=>{
+    btn.addEventListener('click', paintPreview);
+  });
+})();
+
+let nitroFrames=0,nitroCooldown=0;
+try{best=Number(localStorage.getItem('roadrush-best'))||0}catch(e){}
+$('best').textContent=best;
+
+function rounded(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.roundRect(x,y,w,h,r);
+  ctx.fill();
+}
+function drawCar(x,y,color,isPlayer=false){
+  ctx.save();
+  ctx.translate(x,y);
+
+  // Soft shadow beneath the car
+  ctx.fillStyle='#0005';
+  ctx.beginPath();
+  ctx.ellipse(2,35,22,35,0,0,Math.PI*2);
+  ctx.fill();
+
+  // Subtle player nitro glow
+  if(isPlayer){
+    ctx.save();
+    ctx.globalAlpha=0.22;
+    ctx.shadowColor='#22eaff';
+    ctx.shadowBlur=20;
+    ctx.fillStyle='#22eaff';
+    ctx.beginPath();
+    ctx.ellipse(0,38,19,31,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+
+  // NITRO_FLAME_EFFECT: animated blue exhaust
+  if (isPlayer && typeof nitroFrames !== 'undefined' && nitroFrames > 0) {
+    const pulse = 0.8 + 0.2 * Math.sin(performance.now() / 45);
+
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.shadowColor = '#20cfff';
+    ctx.shadowBlur = 18;
+
+    const flame = ctx.createLinearGradient(0, 58, 0, 101);
+    flame.addColorStop(0, '#eaffff');
+    flame.addColorStop(0.25, '#31eaff');
+    flame.addColorStop(0.65, '#168bff');
+    flame.addColorStop(1, 'rgba(25,80,255,0)');
+
+    ctx.fillStyle = flame;
+    ctx.beginPath();
+    ctx.moveTo(-7, 57);
+    ctx.quadraticCurveTo(-13, 73, -5, 94);
+    ctx.lineTo(0, 84 + 5 * pulse);
+    ctx.lineTo(5, 94);
+    ctx.quadraticCurveTo(13, 73, 7, 57);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // Sport tyres
+  ctx.fillStyle='#101216';
+  rounded(-22,12,8,19,3);
+  rounded(14,12,8,19,3);
+  rounded(-22,43,8,18,3);
+  rounded(14,43,8,18,3);
+
+  // Metallic body
+  const body=ctx.createLinearGradient(-18,0,18,0);
+  body.addColorStop(0,'#20252b');
+  body.addColorStop(0.18,color);
+  body.addColorStop(0.52,color);
+  body.addColorStop(0.85,color);
+  body.addColorStop(1,'#252a30');
+
+  ctx.fillStyle=body;
+  ctx.beginPath();
+  ctx.moveTo(-8,0);
+  ctx.quadraticCurveTo(-15,2,-17,13);
+  ctx.lineTo(-18,45);
+  ctx.quadraticCurveTo(-18,59,-12,64);
+  ctx.lineTo(12,64);
+  ctx.quadraticCurveTo(18,59,18,45);
+  ctx.lineTo(17,13);
+  ctx.quadraticCurveTo(15,2,8,0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Body reflections
+  ctx.strokeStyle='#ffffff70';
+  ctx.lineWidth=1.3;
+  ctx.beginPath();
+  ctx.moveTo(-10,8);
+  ctx.lineTo(-12,34);
+  ctx.moveTo(10,8);
+  ctx.lineTo(12,34);
+  ctx.stroke();
+
+  // Front windshield
+  const glass=ctx.createLinearGradient(0,12,0,31);
+  glass.addColorStop(0,'#426170');
+  glass.addColorStop(1,'#101e2a');
+  ctx.fillStyle=glass;
+  ctx.beginPath();
+  ctx.moveTo(-10,17);
+  ctx.quadraticCurveTo(-8,12,0,12);
+  ctx.quadraticCurveTo(8,12,10,17);
+  ctx.lineTo(8,30);
+  ctx.lineTo(-8,30);
+  ctx.closePath();
+  ctx.fill();
+
+  // Rear window
+  ctx.fillStyle='#172a35';
+  rounded(-10,36,20,10,3);
+
+  // Racing stripe
+  ctx.fillStyle='#ffffff70';
+  ctx.fillRect(-1.5,31,3,17);
+
+  if(isPlayer){
+    ctx.fillStyle='#31e6a0';
+    ctx.fillRect(-15,49,30,3);
+    ctx.fillStyle='#fff8c8';
+    ctx.fillRect(-13,3,7,4);
+    ctx.fillRect(6,3,7,4);
+    ctx.fillStyle='#b8fff0';
+    ctx.fillRect(-12,8,4,2);
+    ctx.fillRect(8,8,4,2);
+  }else{
+    ctx.fillStyle='#ff5148';
+    ctx.fillRect(-13,55,7,4);
+    ctx.fillRect(6,55,7,4);
+  }
+
+  // Front air intake and rear spoiler
+  ctx.fillStyle='#15191d';
+  rounded(-7,5,14,4,2);
+  ctx.fillStyle='#252a30';
+  rounded(-13,59,26,3,1);
+
+  ctx.restore();
+}
+
+function drawDesertDetails(){
+  // Distant rocky formations
+  ctx.fillStyle = '#a8754c';
+  ctx.beginPath();
+  ctx.moveTo(0,215); ctx.lineTo(28,184); ctx.lineTo(44,202);
+  ctx.lineTo(66,174); ctx.lineTo(91,215); ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(299,215); ctx.lineTo(326,180); ctx.lineTo(345,198);
+  ctx.lineTo(369,169); ctx.lineTo(390,207); ctx.closePath(); ctx.fill();
+
+  // Desert palms on both sides
+  for(const side of [0,1]){
+    const x = side ? 376 : 14;
+    const y = side ? 204 : 218;
+    ctx.strokeStyle = '#765039';
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(x,y+35); ctx.lineTo(x+2,y); ctx.stroke();
+
+    ctx.strokeStyle = '#477044';
+    ctx.lineWidth = 3;
+    for(let i=0;i<5;i++){
+      const a = (-Math.PI/2) + (i-2)*0.48;
+      ctx.beginPath();
+      ctx.moveTo(x+2,y);
+      ctx.quadraticCurveTo(
+        x+Math.cos(a)*13, y+Math.sin(a)*10,
+        x+Math.cos(a)*23, y+Math.sin(a)*18+4
+      );
+      ctx.stroke();
+    }
+  }
+
+  // Small desert rocks
+  ctx.fillStyle = '#c08b56';
+  for(const r of [{x:16,y:294},{x:372,y:326},{x:12,y:410},{x:377,y:455}]){
+    ctx.beginPath();
+    ctx.ellipse(r.x,r.y,5,3,0.2,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function drawRoad(){
+  // Desert sand
+  const sand=ctx.createLinearGradient(0,0,0,H);
+  sand.addColorStop(0,'#d8a56d');
+  sand.addColorStop(1,'#f0d19a');
+  ctx.fillStyle=sand;
+  ctx.fillRect(0,0,W,H);
+
+  // Distant desert hills
+  ctx.fillStyle='#b9824f';
+  ctx.beginPath();
+  ctx.moveTo(0,170);
+  ctx.lineTo(45,125);
+  ctx.lineTo(90,158);
+  ctx.lineTo(145,105);
+  ctx.lineTo(200,160);
+  ctx.lineTo(260,118);
+  ctx.lineTo(320,158);
+  ctx.lineTo(390,112);
+  ctx.lineTo(390,270);
+  ctx.lineTo(0,270);
+  ctx.closePath();
+  ctx.fill();
+
+  // Small roadside buildings
+  const buildings=[
+    {x:2,w:20,h:75,c:'#c87950'},
+    {x:1,w:24,h:105,c:'#e1b77e'},
+    {x:5,w:18,h:62,c:'#a95f43'},
+    {x:366,w:21,h:90,c:'#d6a06a'},
+    {x:365,w:23,h:120,c:'#bd7954'},
+    {x:369,w:18,h:68,c:'#e3bd87'}
+  ];
+
+  for(const b of buildings){
+    const base=250;
+    ctx.fillStyle=b.c;
+    ctx.fillRect(b.x,base-b.h,b.w,b.h);
+
+    ctx.fillStyle='#704e3b';
+    ctx.fillRect(b.x+b.w/2-2,base-15,4,15);
+
+    ctx.fillStyle='#f7dca2';
+    for(let wy=base-b.h+12;wy<base-23;wy+=19){
+      ctx.fillRect(b.x+4,wy,4,6);
+      ctx.fillRect(b.x+b.w-8,wy,4,6);
+    }
+  }
+
+  drawDesertDetails();
+
+  // Sandy roadside
+  ctx.fillStyle='#c49a5a';
+  ctx.fillRect(0,250,27,H-250);
+  ctx.fillRect(363,250,27,H-250);
+
+  // Road shoulders
+  ctx.fillStyle='#d7d7d7';
+  ctx.fillRect(27,0,8,H);
+  ctx.fillRect(355,0,8,H);
+
+  // Red shoulder markings
+  ctx.fillStyle='#c33b35';
+  for(let y=-50+(roadOffset%70);y<H;y+=70){
+    ctx.fillRect(27,y,8,35);
+    ctx.fillRect(355,y,8,35);
+  }
+
+  // Realistic shaded asphalt
+  const g=ctx.createLinearGradient(35,0,355,0);
+  g.addColorStop(0,'#25292f');
+  g.addColorStop(0.12,'#383d44');
+  g.addColorStop(0.5,'#484d54');
+  g.addColorStop(0.88,'#383d44');
+  g.addColorStop(1,'#25292f');
+  ctx.fillStyle=g;
+  ctx.fillRect(35,0,320,H);
+
+  // Roadside shadow gradients
+  const edgeShade=ctx.createLinearGradient(35,0,355,0);
+  edgeShade.addColorStop(0,'#11182070');
+  edgeShade.addColorStop(0.12,'#11182000');
+  edgeShade.addColorStop(0.88,'#11182000');
+  edgeShade.addColorStop(1,'#11182070');
+  ctx.fillStyle=edgeShade;
+  ctx.fillRect(35,0,320,H);
+
+  // Subtle asphalt texture, fixed positions to avoid flicker
+  ctx.fillStyle='#ffffff0b';
+  for(let y=12;y<H;y+=37){
+    for(let x=53;x<345;x+=43){
+      const xx=x+((Math.floor(y/37)%2)*12);
+      ctx.fillRect(xx,y,2,1);
+      ctx.fillRect(xx+11,y+9,1,2);
+    }
+  }
+
+  // Bright road boundary lines
+  ctx.fillStyle='#f5f5e8';
+  ctx.fillRect(41,0,3,H);
+  ctx.fillRect(346,0,3,H);
+
+  // Thin reflective edge accents
+  ctx.fillStyle='#ffffff35';
+  ctx.fillRect(45,0,1,H);
+  ctx.fillRect(344,0,1,H);
+
+  // Lane markings
+  ctx.fillStyle='#eeeeea';
+  for(let y=-65+(roadOffset%100);y<H;y+=100){
+    ctx.fillRect(130,y,4,53);
+    ctx.fillRect(256,y,4,53);
+  }
+}
+/* NITRO_SPEED_STREAKS_V1 */
+function drawSpeedStreaks(){
+  const boost = nitroFrames > 0;
+  const intensity = Math.max(0, Math.min(1, (speed - 80) / 140));
+  if(intensity < 0.04 && !boost) return;
+
+  ctx.save();
+  ctx.lineCap = 'round';
+
+  for(let i=0; i<15; i++){
+    const x = 82 + ((i * 47) % 226);
+    const drift = (i % 3) * 19;
+    const travel = roadOffset * (1.2 + (i % 4) * 0.22);
+    const y = ((i * 89 + drift + travel) % 650) - 25;
+    const length = 9 + intensity * 27 + (boost ? 15 : 0);
+    const alpha = 0.12 + intensity * 0.28 + (boost ? 0.18 : 0);
+
+    ctx.globalAlpha = Math.min(alpha, 0.62);
+    ctx.strokeStyle = boost ? '#8df7ff' : '#d8e9f5';
+    ctx.lineWidth = boost ? 2 : 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + length);
+    ctx.stroke();
+  }
+
+  if(boost){
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = '#19dfff';
+    ctx.fillRect(74, 0, 5, 600);
+    ctx.fillRect(311, 0, 5, 600);
+  }
+
+  ctx.restore();
+}
+
+function draw(){
+  drawRoad();
+  drawSpeedStreaks();
+  enemies.forEach(e=>drawCar(e.x,e.y,e.color));
+  drawCar(player.x,player.y,playerColor,true);
+}
+function reset(){
+  player={x:195,y:500};
+if($('menuBest')) $('menuBest').textContent='🏆 أفضل نتيجة شخصية: '+best+' نقطة';
+  enemies=[];score=0;speed=80;roadOffset=0;
+  lastSpawn=0;lastTime=0;running=true;paused=false;nitroFrames=0;nitroCooldown=0;
+  $('score').textContent='0';$('speed').textContent='80';
+  $('overlay').style.display='none';
+  $('pause').textContent='Ⅱ';
+  requestAnimationFrame(loop);
+}
+function endGame(){
+  running=false;
+  const finalScore=Math.floor(score);
+  if(finalScore>best){
+    best=finalScore;
+    $('best').textContent=best;
+    try{localStorage.setItem('roadrush-best',best)}catch(e){}
+  }
+  $('headline').textContent='انتهى السباق!';
+  $('message').textContent='نتيجتك '+finalScore+' نقطة. أفضل نتيجة: '+best+'. جرّب مرة تانية وحسّن رقمك!';
+  $('start').textContent='العب مرة أخرى';
+  $('menuBest').textContent='🏆 أفضل نتيجة شخصية: '+best+' نقطة';
+  $('overlay').style.display='flex';
+}
+function loop(t){
+  if(!running||paused)return;
+  const dt=Math.min((t-lastTime)/16.67||1,2);
+  lastTime=t;nitroCooldown=Math.max(0,nitroCooldown-dt);nitroFrames=Math.max(0,nitroFrames-dt);$('nitro').textContent=nitroFrames>0?'⚡ نيترو!':nitroCooldown>0?'⚡ '+Math.ceil(nitroCooldown/60)+' ث':'⚡ نيترو';
+  speed=Math.min(80+Math.floor(score/4)+(nitroFrames>0?45:0),260);
+  roadOffset+=speed*.12*dt;
+  if(t-lastSpawn>Math.max(420,1050-score*2)){
+    const lane=lanes[Math.floor(Math.random()*lanes.length)];
+    if(!enemies.some(e=>e.x===lane&&e.y<150)){
+      const colors=['#d8dce0','#db4b42','#e6ad36','#367dc5','#a9b1ba'];
+      enemies.push({x:lane,y:-80,color:colors[Math.floor(Math.random()*colors.length)]});
+    }
+    lastSpawn=t;
+  }
+  for(let i=enemies.length-1;i>=0;i--){
+    const e=enemies[i];
+    e.y+=(2.6+Math.min(speed,220)*.021)*dt;
+    if(Math.abs(player.x-e.x)<30&&Math.abs(player.y-e.y)<54){
+      draw();endGame();return;
+    }
+    if(e.y>H+80){enemies.splice(i,1);score+=10}
+  }
+  score+=(nitroFrames>0?.12:.04)*dt;
+  $('score').textContent=Math.floor(score);
+  $('speed').textContent=speed;
+  draw();
+  requestAnimationFrame(loop);
+}
+function activateNitro(){if(!running||paused||nitroCooldown>0)return;nitroFrames=132;nitroCooldown=390;}
+function move(dir){
+  if(!running||paused)return;
+  const i=lanes.indexOf(player.x);
+  player.x=lanes[Math.max(0,Math.min(2,i+dir))];
+  draw();
+}
+$('left').addEventListener('pointerdown',e=>{e.preventDefault();move(-1)});
+$('right').addEventListener('pointerdown',e=>{e.preventDefault();move(1)});
+$('nitro').addEventListener('pointerdown',e=>{e.preventDefault();activateNitro()});
+document.querySelectorAll('.carChoice').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    playerColor=btn.dataset.color;
+    document.querySelectorAll('.carChoice').forEach(b=>{
+      b.classList.remove('selected');
+      b.style.borderColor='#526777';
+      b.style.background='#263442';
+    });
+    btn.classList.add('selected');
+    btn.style.borderColor='#48e0a0';
+    btn.style.background='#203b38';
+  });
+});
+$('start').addEventListener('click',()=>{if(paused){paused=false;$('overlay').style.display='none';$('pause').textContent='Ⅱ';lastTime=0;requestAnimationFrame(loop)}else reset()});
+$('pause').addEventListener('click',()=>{
+  if(!running)return;
+  paused=!paused;
+  $('pause').textContent=paused?'▶':'Ⅱ';
+  if(paused){
+    $('headline').textContent='استراحة';
+    $('message').textContent='اضغط متابعة للرجوع للسباق.';
+    $('start').textContent='متابعة السباق';
+    $('overlay').style.display='flex';
+  }else{
+    $('overlay').style.display='none';
+    lastTime=0;
+    requestAnimationFrame(loop);
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='a')move(-1);
+  if(e.key==='ArrowRight'||e.key==='d')move(1);
+  if(e.key===' '&&running){e.preventDefault();$('pause').click()}
+});
+let touchX=null;
+c.addEventListener('touchstart',e=>{touchX=e.touches[0].clientX},{passive:true});
+c.addEventListener('touchend',e=>{
+  if(touchX===null)return;
+  const dx=e.changedTouches[0].clientX-touchX;
+  if(Math.abs(dx)>30)move(dx<0?-1:1);
+  touchX=null;
+},{passive:true});
+player={x:195,y:500};enemies=[];score=0;roadOffset=0;
+draw();
+</script>
+</body>
+</html>
+

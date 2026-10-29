@@ -1,0 +1,337 @@
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#111820">
+<title>NITRO DRIVE | سباق السرعة</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#111820;color:#fff;font-family:Arial,sans-serif;text-align:center;overflow:hidden;touch-action:manipulation;user-select:none}
+header{height:55px;display:flex;align-items:center;justify-content:space-between;padding:0 15px;background:#18232e}
+.logo{font-weight:900;letter-spacing:1px;font-size:17px}
+.logo span{color:#48e0a0}
+.pill{background:#263442;padding:7px 12px;border-radius:20px;font-size:13px}
+#stats{display:flex;justify-content:space-around;padding:10px 4px}
+.stat{min-width:85px;background:#1b2733;border:1px solid #344452;border-radius:12px;padding:7px}
+.stat small{display:block;color:#9fb0be;font-size:11px;margin-bottom:4px}
+.stat strong{font-size:19px}
+#game{display:block;width:min(100vw,390px);height:auto;max-height:66dvh;margin:0 auto;background:#555;touch-action:none}
+.controls{display:flex;justify-content:center;align-items:center;gap:20px;padding:12px 10px}
+.ctrl{width:100px;height:53px;border:1px solid #526777;border-radius:14px;background:#263442;color:white;font-size:22px;font-weight:bold}
+.ctrl:active{background:#48e0a0;color:#102018}
+#pause{width:65px;font-size:16px}
+.note{color:#8d9eac;font-size:11px;margin:0}
+#overlay{position:fixed;inset:0;z-index:5;background:#071019eF;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:13px}
+#overlay h1{font-size:34px;margin:0;color:#48e0a0}
+#overlay p{color:#c4d0d9;line-height:1.7;max-width:290px}
+#start{border:0;background:#48e0a0;color:#102018;border-radius:13px;padding:15px 35px;font-size:18px;font-weight:bold}
+#overlay .sub{font-size:12px;color:#8394a2}
+@media(min-height:750px){#game{max-height:68dvh}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">ROAD <span>RUSH</span></div>
+  <div class="pill">🏁 ARCADE RACING</div>
+</header>
+<div id="stats">
+  <div class="stat"><small>النقاط</small><strong id="score">0</strong></div>
+  <div class="stat"><small>السرعة</small><strong><span id="speed">80</span></strong><small>كم/س</small></div>
+  <div class="stat"><small>أفضل نتيجة</small><strong id="best">0</strong></div>
+</div>
+<canvas id="game" width="390" height="600"></canvas>
+<div class="controls">
+  <button class="ctrl" id="left" aria-label="يسار">◀</button>
+  <button class="ctrl" id="pause">Ⅱ</button>
+  <button class="ctrl" id="right" aria-label="يمين">▶</button>
+</div>
+<p class="note">استخدم الأسهم أو أزرار التحكم لتفادي السيارات</p>
+
+<div id="overlay">
+  <div style="font-size:52px">🏎️</div>
+  <h1 id="headline">NITRO DRIVE</h1>
+  <p id="message">استعد للسباق! تفادى السيارات واجمع النقاط وحقق أفضل نتيجة.</p>
+  <button id="start">ابدأ السباق</button>
+  <div class="sub">لعبة سباق للموبايل والكمبيوتر</div>
+</div>
+
+<script>
+const c=document.getElementById('game');
+const ctx=c.getContext('2d');
+const $=id=>document.getElementById(id);
+const W=390,H=600;
+const lanes=[100,195,290];
+let player,enemies,score,speed,roadOffset,lastSpawn,lastTime,running,paused;
+let best=0;
+try{best=Number(localStorage.getItem('roadrush-best'))||0}catch(e){}
+$('best').textContent=best;
+
+function rounded(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.roundRect(x,y,w,h,r);
+  ctx.fill();
+}
+function drawCar(x,y,color,isPlayer=false){
+  ctx.save();
+  ctx.translate(x,y);
+
+  // Shadow
+  ctx.fillStyle='#0006';
+  ctx.beginPath();
+  ctx.ellipse(0,34,21,34,0,0,Math.PI*2);
+  ctx.fill();
+
+  // Tires
+  ctx.fillStyle='#101216';
+  rounded(-22,12,8,18,3);
+  rounded(14,12,8,18,3);
+  rounded(-22,43,8,17,3);
+  rounded(14,43,8,17,3);
+
+  // Sport-car body
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.moveTo(-9,0);
+  ctx.quadraticCurveTo(-16,3,-17,14);
+  ctx.lineTo(-18,45);
+  ctx.quadraticCurveTo(-18,59,-12,64);
+  ctx.lineTo(12,64);
+  ctx.quadraticCurveTo(18,59,18,45);
+  ctx.lineTo(17,14);
+  ctx.quadraticCurveTo(16,3,9,0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Body highlights
+  ctx.strokeStyle='#ffffff70';
+  ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(-10,8);
+  ctx.lineTo(-12,34);
+  ctx.moveTo(10,8);
+  ctx.lineTo(12,34);
+  ctx.stroke();
+
+  // Windshield and roof
+  ctx.fillStyle='#142633';
+  ctx.beginPath();
+  ctx.moveTo(-11,17);
+  ctx.quadraticCurveTo(-9,12,0,12);
+  ctx.quadraticCurveTo(9,12,11,17);
+  ctx.lineTo(9,30);
+  ctx.lineTo(-9,30);
+  ctx.closePath();
+  ctx.fill();
+
+  // Rear window
+  ctx.fillStyle='#1a303c';
+  rounded(-10,36,20,10,3);
+
+  // Racing details
+  ctx.fillStyle='#ffffff55';
+  ctx.fillRect(-2,31,4,17);
+
+  if(isPlayer){
+    ctx.fillStyle='#31c88b';
+    ctx.fillRect(-15,49,30,3);
+    ctx.fillStyle='#fff5bc';
+    ctx.fillRect(-13,3,7,4);
+    ctx.fillRect(6,3,7,4);
+  }else{
+    ctx.fillStyle='#ff5148';
+    ctx.fillRect(-13,55,7,4);
+    ctx.fillRect(6,55,7,4);
+  }
+
+  // Front air intake
+  ctx.fillStyle='#15191d';
+  rounded(-7,5,14,4,2);
+
+  ctx.restore();
+}
+function drawRoad(){
+  // Desert sand
+  const sand=ctx.createLinearGradient(0,0,0,H);
+  sand.addColorStop(0,'#d8a56d');
+  sand.addColorStop(1,'#f0d19a');
+  ctx.fillStyle=sand;
+  ctx.fillRect(0,0,W,H);
+
+  // Distant desert hills
+  ctx.fillStyle='#b9824f';
+  ctx.beginPath();
+  ctx.moveTo(0,170);
+  ctx.lineTo(45,125);
+  ctx.lineTo(90,158);
+  ctx.lineTo(145,105);
+  ctx.lineTo(200,160);
+  ctx.lineTo(260,118);
+  ctx.lineTo(320,158);
+  ctx.lineTo(390,112);
+  ctx.lineTo(390,270);
+  ctx.lineTo(0,270);
+  ctx.closePath();
+  ctx.fill();
+
+  // Small roadside buildings
+  const buildings=[
+    {x:2,w:20,h:75,c:'#c87950'},
+    {x:1,w:24,h:105,c:'#e1b77e'},
+    {x:5,w:18,h:62,c:'#a95f43'},
+    {x:366,w:21,h:90,c:'#d6a06a'},
+    {x:365,w:23,h:120,c:'#bd7954'},
+    {x:369,w:18,h:68,c:'#e3bd87'}
+  ];
+
+  for(const b of buildings){
+    const base=250;
+    ctx.fillStyle=b.c;
+    ctx.fillRect(b.x,base-b.h,b.w,b.h);
+
+    ctx.fillStyle='#704e3b';
+    ctx.fillRect(b.x+b.w/2-2,base-15,4,15);
+
+    ctx.fillStyle='#f7dca2';
+    for(let wy=base-b.h+12;wy<base-23;wy+=19){
+      ctx.fillRect(b.x+4,wy,4,6);
+      ctx.fillRect(b.x+b.w-8,wy,4,6);
+    }
+  }
+
+  // Sandy roadside
+  ctx.fillStyle='#c49a5a';
+  ctx.fillRect(0,250,27,H-250);
+  ctx.fillRect(363,250,27,H-250);
+
+  // Road shoulders
+  ctx.fillStyle='#d7d7d7';
+  ctx.fillRect(27,0,8,H);
+  ctx.fillRect(355,0,8,H);
+
+  // Red shoulder markings
+  ctx.fillStyle='#c33b35';
+  for(let y=-50+(roadOffset%70);y<H;y+=70){
+    ctx.fillRect(27,y,8,35);
+    ctx.fillRect(355,y,8,35);
+  }
+
+  // Asphalt
+  const g=ctx.createLinearGradient(35,0,355,0);
+  g.addColorStop(0,'#30343a');
+  g.addColorStop(.5,'#50545a');
+  g.addColorStop(1,'#30343a');
+  ctx.fillStyle=g;
+  ctx.fillRect(35,0,320,H);
+
+  // Road edges
+  ctx.fillStyle='#f5f5e8';
+  ctx.fillRect(41,0,3,H);
+  ctx.fillRect(346,0,3,H);
+
+  // Lane markings
+  ctx.fillStyle='#eeeeea';
+  for(let y=-65+(roadOffset%100);y<H;y+=100){
+    ctx.fillRect(130,y,4,53);
+    ctx.fillRect(256,y,4,53);
+  }
+}
+function draw(){
+  drawRoad();
+  enemies.forEach(e=>drawCar(e.x,e.y,e.color));
+  drawCar(player.x,player.y,'#17b879',true);
+}
+function reset(){
+  player={x:195,y:500};
+  enemies=[];score=0;speed=80;roadOffset=0;
+  lastSpawn=0;lastTime=0;running=true;paused=false;
+  $('score').textContent='0';$('speed').textContent='80';
+  $('overlay').style.display='none';
+  $('pause').textContent='Ⅱ';
+  requestAnimationFrame(loop);
+}
+function endGame(){
+  running=false;
+  const finalScore=Math.floor(score);
+  if(finalScore>best){
+    best=finalScore;
+    $('best').textContent=best;
+    try{localStorage.setItem('roadrush-best',best)}catch(e){}
+  }
+  $('headline').textContent='انتهى السباق!';
+  $('message').textContent='نتيجتك '+finalScore+' نقطة. أفضل نتيجة: '+best+'. جرّب مرة تانية وحسّن رقمك!';
+  $('start').textContent='العب مرة أخرى';
+  $('overlay').style.display='flex';
+}
+function loop(t){
+  if(!running||paused)return;
+  const dt=Math.min((t-lastTime)/16.67||1,2);
+  lastTime=t;
+  speed=Math.min(80+Math.floor(score/4),220);
+  roadOffset+=speed*.12*dt;
+  if(t-lastSpawn>Math.max(420,1050-score*2)){
+    const lane=lanes[Math.floor(Math.random()*lanes.length)];
+    if(!enemies.some(e=>e.x===lane&&e.y<150)){
+      const colors=['#d8dce0','#db4b42','#e6ad36','#367dc5','#a9b1ba'];
+      enemies.push({x:lane,y:-80,color:colors[Math.floor(Math.random()*colors.length)]});
+    }
+    lastSpawn=t;
+  }
+  for(let i=enemies.length-1;i>=0;i--){
+    const e=enemies[i];
+    e.y+=(2.6+speed*.021)*dt;
+    if(Math.abs(player.x-e.x)<30&&Math.abs(player.y-e.y)<54){
+      draw();endGame();return;
+    }
+    if(e.y>H+80){enemies.splice(i,1);score+=10}
+  }
+  score+=.04*dt;
+  $('score').textContent=Math.floor(score);
+  $('speed').textContent=speed;
+  draw();
+  requestAnimationFrame(loop);
+}
+function move(dir){
+  if(!running||paused)return;
+  const i=lanes.indexOf(player.x);
+  player.x=lanes[Math.max(0,Math.min(2,i+dir))];
+  draw();
+}
+$('left').addEventListener('pointerdown',e=>{e.preventDefault();move(-1)});
+$('right').addEventListener('pointerdown',e=>{e.preventDefault();move(1)});
+$('start').addEventListener('click',reset);
+$('pause').addEventListener('click',()=>{
+  if(!running)return;
+  paused=!paused;
+  $('pause').textContent=paused?'▶':'Ⅱ';
+  if(paused){
+    $('headline').textContent='استراحة';
+    $('message').textContent='اضغط متابعة للرجوع للسباق.';
+    $('start').textContent='متابعة السباق';
+    $('overlay').style.display='flex';
+  }else{
+    $('overlay').style.display='none';
+    lastTime=0;
+    requestAnimationFrame(loop);
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='a')move(-1);
+  if(e.key==='ArrowRight'||e.key==='d')move(1);
+  if(e.key===' '&&running){e.preventDefault();$('pause').click()}
+});
+let touchX=null;
+c.addEventListener('touchstart',e=>{touchX=e.touches[0].clientX},{passive:true});
+c.addEventListener('touchend',e=>{
+  if(touchX===null)return;
+  const dx=e.changedTouches[0].clientX-touchX;
+  if(Math.abs(dx)>30)move(dx<0?-1:1);
+  touchX=null;
+},{passive:true});
+player={x:195,y:500};enemies=[];score=0;roadOffset=0;
+draw();
+</script>
+</body>
+</html>
+
