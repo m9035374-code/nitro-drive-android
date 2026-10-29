@@ -2,10 +2,13 @@
     <application
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:label="NITRO DRIVE"
+        android:icon="@drawable/ic_launcher"
         android:usesCleartextTraffic="false"
         android:allowBackup="true">
         <activity
             android:name=".MainActivity"
+            android:label="NITRO DRIVE"
+            android:icon="@drawable/ic_launcher"
             android:exported="true"
             android:screenOrientation="landscape">
             <intent-filter>
