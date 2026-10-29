@@ -85,6 +85,33 @@ header{height:55px;display:flex;align-items:center;justify-content:space-between
   .speed-ring strong { font-size: 22px; }
 }
 
+
+/* MOBILE APP MENU FIX */
+#overlay{
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  justify-content:flex-start;
+  padding:12px 16px max(12px, env(safe-area-inset-bottom));
+  gap:8px;
+}
+#overlay h1{font-size:clamp(24px,5vh,34px)}
+#overlay p{margin:4px auto;line-height:1.45}
+#carPreviewWrap{margin:4px auto;padding:7px;width:min(220px,85%)}
+#carPreview{height:65px}
+#carPreviewTitle{margin-bottom:2px}
+#carPreviewCaption{margin-top:2px}
+#menuBest{margin:4px auto!important;padding:7px 12px!important}
+#start{padding:12px 30px;flex-shrink:0}
+@media (orientation:landscape) and (max-height:500px){
+  #overlay{gap:5px;padding:6px 12px}
+  #overlay>div:first-child{font-size:30px!important}
+  #overlay h1{font-size:23px}
+  #overlay p{font-size:14px}
+  #carPicker{flex-shrink:0}
+  #carPreviewWrap{display:none}
+  #start{padding:9px 26px}
+}
+
 </style>
 </head>
 <body>
